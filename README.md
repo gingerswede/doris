@@ -37,6 +37,10 @@ Run Doris on *nix:
 Run Doris on Windows:
 
 	C:\> java -jar c:\path\to\doris.jar
+	
+Run Doris on Mac:
+
+	$ java -jar doris.jar
 
 [Back to top](#table-of-contents)
 ###Help
