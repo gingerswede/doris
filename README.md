@@ -40,6 +40,7 @@ Doris was created by Emil Carlsson as part of a bachelor thesis about problems e
 Most common on MacOS is 1.6. To find out your JRE type *java -version*.
 ####JRE 1.7
 * [Version 1.1.0](http://gingerswede.github.io/doris/jar/doris-v1.1.0.jar) (Current version)
+
 ####JRE 1.6
 * [Version 1.1.0](http://gingerswede.github.io/doris/jar/1_6/doris-v1.1.0.jar) (Current version)
 
