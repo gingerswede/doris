@@ -33,12 +33,15 @@ Doris was created by Emil Carlsson as part of a bachelor thesis about problems e
 
 [Back to top](#table-of-contents)
 ###Coming updates
-Working JARs that can be downloaded.
 * Working -b flag to specify branch. At the moment only master-branch can be mined.
 
 [Back to top](#table-of-contents)
 ###Working JARs
+Most common on MacOS is 1.6. To find out your JRE type *java -version*.
+####JRE 1.7
 * [Version 1.1.0](http://gingerswede.github.io/doris/jar/doris-v1.1.0.jar) (Current version)
+####JRE 1.6
+* [Version 1.1.0](http://gingerswede.github.io/doris/jar/1_6/doris-v1.1.0.jar) (Current version)
 
 [Back to top](#table-of-contents)
 ##Dependencies
