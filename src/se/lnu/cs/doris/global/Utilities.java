@@ -7,7 +7,9 @@ import java.util.Scanner;
 
 /**
  * Small utility class created to do tasks that occur often.
- *
+ * 
+ * @author Emil Carlsson
+ * 
  * This file is a part of Doris
  *
  * Doris is free software: you can redistribute it and/or modify it
@@ -22,10 +24,7 @@ import java.util.Scanner;
  * You should have received a copy of the GNU General Public License 
  * along with Doris.  
  * If not, see <http://www.gnu.org/licenses/>.
- * 
- *  
- * @author Emil Carlsson
- * 
+ *
  */
 public class Utilities {
 	
@@ -59,7 +58,7 @@ public class Utilities {
 			try {
 				Files.deleteIfExists(path);
 			} catch(Exception e) {
-				if (!file.isDirectory()) {
+				if (file.isFile()) {
 					System.out.format("Deletion failed.\nManual deletion of %s needed.\n", 
 						file.getAbsolutePath());
 				}

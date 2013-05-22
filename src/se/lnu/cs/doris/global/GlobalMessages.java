@@ -2,6 +2,7 @@ package se.lnu.cs.doris.global;
 
 /**
  * Class containing messages that can be used globally.
+ * @author Emil Carlsson
  * 
  * This file is a part of Doris
  *
@@ -17,10 +18,7 @@ package se.lnu.cs.doris.global;
  * You should have received a copy of the GNU General Public License 
  * along with Doris.  
  * If not, see <http://www.gnu.org/licenses/>.
- * 
- *  
- * @author Emil Carlsson
- * 
+ *
  */
 public class GlobalMessages {
 	/**

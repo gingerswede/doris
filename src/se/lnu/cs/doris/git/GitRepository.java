@@ -22,6 +22,8 @@ import se.lnu.cs.doris.global.Utilities;
 /**
  * Class to perform repository mining of git repositories.
  * 
+ * @author Emil Carlsson
+ * 
  * This file is a part of Doris
  *
  * Doris is free software: you can redistribute it and/or modify it
@@ -36,16 +38,12 @@ import se.lnu.cs.doris.global.Utilities;
  * You should have received a copy of the GNU General Public License 
  * along with Doris.  
  * If not, see <http://www.gnu.org/licenses/>.
- * 
- *  
- * @author Emil Carlsson
- * 
+ *
  */
 public class GitRepository {
 	//Class specific constants
-	//Tests showed that it works faster with four threads on a single core processor
-	//hence the static four if the available cores are less than 2.
-	private static int MAX_NUMBER_OF_THREADS = (Runtime.getRuntime().availableProcessors() < 2) ? 4 : Runtime.getRuntime().availableProcessors();
+	//Because of IO-time compensation there is a minimum of 4 threads. Else double the amount of available cores.
+	private final int MAX_NUMBER_OF_THREADS = (Runtime.getRuntime().availableProcessors() < 2) ? 4 : Runtime.getRuntime().availableProcessors() * 2;
 	
 	//Class usage
 	private Repository m_headRepository;
@@ -58,15 +56,19 @@ public class GitRepository {
 	private String m_target;
 	private String m_startPoint;
 	private String m_endPoint;
+	private String m_branch;
 	private Boolean m_noLog;
 	private int m_limit;
+
+	//Strings
+	private String m_master = "master";
 
 	/**
 	 * Constructor taking the uri flag value.
 	 * @param uri URI to the git repository's .git file.
 	 */
 	public GitRepository(String uri) {		
-		this(uri, null, null, null, null, false);
+		this(uri, null, null, null, null, 0, false);
 	}
 
 	/**
@@ -75,7 +77,17 @@ public class GitRepository {
 	 * @param target Path to target directory.
 	 */
 	public GitRepository(String uri, String target) {
-		this(uri, target, null, null, null, false);
+		this(uri, target, null, null, null, 0, false);
+	}
+
+	/**
+	 * Constructor taking the URI, target and start point flags.
+	 * @param uri URI to the git repository's .git file.
+	 * @param target Path to target directory.
+	 * @param branch Name of the branch to pull.
+	 */
+	public GitRepository(String uri, String target, String branch) {
+		this(uri, target, branch, null, null, 0, false);
 	}
 
 	/**
@@ -84,8 +96,8 @@ public class GitRepository {
 	 * @param target Path to target directory.
 	 * @param startPoint SHA-1 checksum of the commit that is the starting point.
 	 */
-	public GitRepository(String uri, String target, String startPoint) {
-		this(uri, target, startPoint, null, null, false);
+	public GitRepository(String uri, String target, String branch, String startPoint) {
+		this(uri, target, branch, startPoint, null, 0, false);
 	}
 
 	/**
@@ -95,9 +107,9 @@ public class GitRepository {
 	 * @param startPoint SHA-1 checksum of the commit that is the starting point.
 	 * @param endPoint SHA-1 checksum of the commit that is the end point.
 	 */
-	public GitRepository(String uri, String target, String startPoint,
+	public GitRepository(String uri, String target, String branch, String startPoint,
 			String endPoint) {
-		this(uri, target, startPoint, endPoint, null, false);
+		this(uri, target, branch, startPoint, endPoint, 0, false);
 	}
 
 	/**
@@ -108,9 +120,13 @@ public class GitRepository {
 	 * @param endPoint SHA-1 checksum of the commit that is the end point.
 	 * @param limit Number of commits to be mined.
 	 */
-	public GitRepository(String uri, String target, String startPoint,
-			String endPoint, String limit) {
-		this(uri, target, startPoint, endPoint, limit, false);
+	public GitRepository(String uri, String target, String branch, String startPoint,
+			String endPoint, int limit) {
+		this(uri, target, branch, startPoint, endPoint, limit, false);
+	}
+	
+	public GitRepository(GitParameters params) {
+		//TODO: Create functionality that a GitParameters object can be passed.
 	}
 
 	/**
@@ -122,8 +138,9 @@ public class GitRepository {
 	 * @param limit Number of commits to be mined.
 	 * @param noLog Boolean to set if a meta-data log should be created or not.
 	 */
-	public GitRepository(String uri, String target, String startPoint,
-			String endPoint, String limit, Boolean noLog) {
+	public GitRepository(String uri, String target, String branch, String startPoint,
+			String endPoint, int limit, Boolean noLog) {
+		//TODO: Refactor this constructor.
 		//Get repository name.
 		this.m_repoName = this.getRepoNameFromUri(uri);
 
@@ -131,7 +148,11 @@ public class GitRepository {
 		if (target == null) {
 			target = System.getProperty("user.dir");
 		}		
+		
+		this.m_branch = (branch == null) ? this.m_master : branch;
+		
 		this.m_target = this.appendProjectName(target, uri);
+		
 		File file = new File(this.m_target);
 		
 		if (file.exists()) {
@@ -147,7 +168,7 @@ public class GitRepository {
 		this.m_noLog = noLog;
 		this.m_startPoint = startPoint;
 		this.m_endPoint = endPoint;
-		this.m_limit = Utilities.parseInt(limit);
+		this.m_limit = limit;
 
 		//Set head repository to null.
 		this.m_headRepository = null;
@@ -158,8 +179,9 @@ public class GitRepository {
 	 * @throws Exception 
 	 */
 	public void pullBare() throws Exception {
-		String barePath = this.m_target + "/" + this.m_repoName + ".git";
-		this.m_localUri = "file://" + this.m_target.replace('\\', '/') + "/" + this.m_repoName + ".git";
+		//TODO: Add functionality to pull/select a single branch.
+		String barePath = this.m_target + "/" + this.m_repoName + "_" + this.m_branch + ".git";
+		this.m_localUri = "file://" + this.m_target.replace('\\', '/') + "/" + this.m_repoName + "_" + this.m_branch + ".git";
 		File file = new File(barePath);
 		
 		if (file.exists()) {
@@ -168,11 +190,14 @@ public class GitRepository {
 		try {
 			Git git = Git.cloneRepository()
 					.setURI(this.m_uri)
-					.setDirectory(new File(this.m_target, this.m_repoName + ".git"))
-					.setCloneAllBranches(true)
+					.setDirectory(new File(this.m_target, this.m_repoName + "_" + this.m_branch + ".git"))
+					.setCloneAllBranches(false)
+					.setBranch(m_branch)
 					.setBare(true)
 					.call();
+			
 			this.m_headRepository = git.getRepository();
+			
 		} catch (Exception e) {
 			this.errorHandlingMining(e, null);
 		}
@@ -197,20 +222,14 @@ public class GitRepository {
 			rw.markStart(root);
 
 			Iterator<RevCommit> revs = rw.iterator();
-
-			RevCommit current = rw.parseCommit(revs.next());;
+			
+			RevCommit current = rw.parseCommit(revs.next());
 			Boolean startFound = this.m_startPoint == null,
-					stopFound = this.m_endPoint == null,
+					stopFound = false,
 					checkLimit = this.m_limit != 0;
 			int limit = 0;
 
-			//TODO: Fix the limit bug.
 			while (true) {
-				//TODO: implement wait() and notify()
-				//while (this.m_runningThreads > MAX_NUMBER_OF_THREADS) {
-				//	Thread.sleep(200);
-				//}
-				
 				if (!stopFound && this.m_endPoint != null) {
 					if (current.getName().toLowerCase().equals(this.m_endPoint.toLowerCase())) {
 						GlobalMessages.miningDone(this.m_repoName);
@@ -228,7 +247,7 @@ public class GitRepository {
 				}
 				if (startFound) {
 					//Should work, but not the most beautiful solution.
-					while (this.m_runningThreads >= MAX_NUMBER_OF_THREADS) {
+					while (this.m_runningThreads > MAX_NUMBER_OF_THREADS) {
 						try {
 							wait();
 						} catch (Exception e) {}
@@ -240,7 +259,8 @@ public class GitRepository {
 					//an older version or another program.
 					if (file.exists()) {
 						Utilities.deleteDirectory(file);
-					}
+					}					
+					
 					new Cloner(current, name, i);
 
 					if (!this.m_noLog) {
@@ -326,7 +346,8 @@ public class GitRepository {
 	private RevWalk getRevWalk() throws Exception {
 		if (this.m_headRepository == null) {
 			this.pullBare();
-		}			
+		}
+		
 		return new RevWalk(this.m_headRepository);
 	}
 
@@ -344,7 +365,7 @@ public class GitRepository {
 		if (target.toLowerCase().endsWith(getRepoNameFromUri(uri).toLowerCase())) {
 			return target;
 		} else {
-			return target + "/" + getRepoNameFromUri(uri);
+			return target + "/" + getRepoNameFromUri(uri) + "_" + this.m_branch;
 		}
 	}
 
@@ -392,26 +413,13 @@ public class GitRepository {
 		}
 	}
 	
-	/**
-	 * Class to mine a repository multithreaded.
-	 * @author Emil Carlsson
-	 *
-	 */
-	private class Cloner implements Runnable{
+	class Cloner implements Runnable {
 
 		private String m_name;
 		private int m_i;
 		private RevCommit m_current;
 		private Thread m_thread;
 
-		/**
-		 * Constructor for a git cloner object. Sets up the entire
-		 * object to prepare for mining.
-		 * @param current The rev commit to be cloned.
-		 * @param name With the name of the directory to clone into.
-		 * @param i What number in the order the clone is.
-		 * @throws Exception
-		 */
 		public Cloner(RevCommit current, String name, int i) throws Exception {	    
 			this.m_current = current;
 			this.m_name = name;
@@ -420,14 +428,17 @@ public class GitRepository {
 			this.m_thread.start();
 		}
 		
-		/**
-		 * Private function to start cloning a commit.
-		 * @throws Exception
-		 */
 		private void cloneCommit() throws Exception 	{
 			//Clone from local .git file. Increase speed and lower bandwidth need.
 			try {
 				File mineDir = new File(m_target, this.m_name);
+				
+				if (!mineDir.exists()) {
+					mineDir.mkdir();
+					mineDir.setWritable(true);
+					mineDir.setExecutable(true);
+				}				
+				
 				Git g = null;
 				
 				WindowCacheConfig cfg = new WindowCacheConfig();
@@ -437,13 +448,17 @@ public class GitRepository {
 				g = Git.cloneRepository()
 						.setURI(m_localUri)
 						.setDirectory(mineDir)
+						.setCloneAllBranches(false)
+						.setBranch(m_branch)
 						.call();
-				
+								
 				g.reset().setRef(this.m_current.getName()).setMode(ResetType.HARD).call();
 				
 				GlobalMessages.commitPulled(this.m_i, this.m_current.getName());
 				
 				g.getRepository().close();
+				
+				
 				
 				m_runningThreads--;
 				
@@ -457,10 +472,8 @@ public class GitRepository {
 			this.guardedCloner();
 		}
 		
-		/**
-		 * Function to start cloning in multithread mode.
-		 */
 		public synchronized void guardedCloner() {
+
 			try {
 				this.cloneCommit();
 			} catch (Exception e) {

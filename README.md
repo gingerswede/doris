@@ -2,6 +2,9 @@
 ##Table of contents
 * [License](#license)
 * [About](#about)
+	* [Recent changes](#recent-changes)
+	* [Coming updates](#coming-updates)
+	* [Working JARs](#working-jars)
 * [Usage guide](#usage-guide)
 	* [Help](#help)
 	* [URI](#uri)
@@ -12,6 +15,7 @@
 	* [No log](#no-log)
 	* [Important](#important)
 * [Log file](#log-file)
+* [JavaDocs](http://gingerswede.github.io/doris/)
 
 ##License
 Doris is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -23,6 +27,20 @@ You should have received a copy of the GNU General Public License along with Dor
 Doris was created by Emil Carlsson as part of a bachelor thesis about problems encountered when mining software repositories. The main goal of the thesis was to find a mining tool that could handle git, work with as few dependencies as possible, and also provide automated reproducible extraction and measurement pipeline.
 
 [Back to top](#table-of-contents)
+###Recent changes
+* Fixed bug with not working tags.
+* Added parameter object.
+
+[Back to top](#table-of-contents)
+###Coming updates
+Working JARs that can be downloaded.
+* Working -b flag to specify branch. At the moment only master-branch can be mined.
+
+[Back to top](#table-of-contents)
+###Working JARs
+* [Version 1.1.0](http://gingerswede.github.io/doris/jar/doris-v1.1.0.jar) (Current version)
+
+[Back to top](#table-of-contents)
 ##Dependencies
 Doris is written in Java and requires Java (JRE 1.7 or newer) to be installed on the computer running it.
 
@@ -30,12 +48,15 @@ Doris is written in Java and requires Java (JRE 1.7 or newer) to be installed on
 ##Usage guide
 When using parameters and not specifying target directory, Doris will automatically create a directory with the same name as the .git file used for mining. If no parameters are passed to Doris, Doris will prompt for URI to .git file and the target to store the results from the mining.
 All flags are to be appended after the command to initialize Doris. When using flags the URI flag must be included as a minimum.
-Run Doris on *nix:
+**Notice:** If you have downloaded a working JAR this will have version number appended to it. Then change Doris.jar to doris-vX.Y.Z.jar to run these commands or rename jar to remove version numbering.
 
-	emil@linux-computer ~ $ ./dors.jar
 Run Doris on Windows:
 
 	C:\> java -jar c:\path\to\doris.jar
+	
+Run Doris on Unix-like OS:
+
+	$ java -jar doris.jar
 
 [Back to top](#table-of-contents)
 ###Help

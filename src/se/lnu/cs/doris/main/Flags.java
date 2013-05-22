@@ -1,5 +1,6 @@
 package se.lnu.cs.doris.main;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.regex.Pattern;
 
@@ -7,6 +8,8 @@ import se.lnu.cs.doris.global.GlobalStrings;
 
 /**
  * Class to handle input flags passed to the program.
+ * 
+ * @author Emil Carlsson
  * 
  * This file is a part of Doris
  *
@@ -22,15 +25,12 @@ import se.lnu.cs.doris.global.GlobalStrings;
  * You should have received a copy of the GNU General Public License 
  * along with Doris.  
  * If not, see <http://www.gnu.org/licenses/>.
- * 
- *  
- * @author Emil Carlsson
- * 
+ *
  */
 public class Flags {
 	//Regular expressions used to validate git uri and target.
 	private static String m_uriRegExp = "^(git|http(s?)|file)://.*\\.git";
-	private static String m_targetRegExp = "^([a-zA-Z]:(\\|/)|/)";
+	private static String m_targetRegExp = "^([a-zA-Z]:(\\\\|/)|/)";
 	
 	/**
 	 * Extracts the value following a flag.
@@ -65,12 +65,28 @@ public class Flags {
 	public static String getFlagValue(String[] args, String match) {		
 		if (args.length > 1) {
 			for (int i = 0; i < args.length; i++) {
-				if (args[i].toLowerCase().startsWith(match)) {
+				if (args[i].toLowerCase().equals(match)) {
 					return extractValue(args, i+1);
 				}
 			}
 		} 		
 		return null;
+	}
+	
+	public static String[] getFlags(String[] args) {
+		ArrayList<String> flags = new ArrayList<>();
+		
+		for (String arg : args) {			
+			if (arg.trim().startsWith("-")) {
+				flags.add(arg);
+			}
+		}
+		
+		String[] flagArray = new String[flags.size()];
+		
+		flagArray = flags.toArray(flagArray);
+		
+		return flagArray;
 	}
 	
 	/**

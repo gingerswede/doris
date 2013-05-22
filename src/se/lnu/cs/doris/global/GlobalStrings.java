@@ -4,6 +4,7 @@ import java.nio.charset.Charset;
 
 /**
  * Representation of global strings for reusability.
+ * @author Emil Carlsson
  * 
  * This file is a part of Doris
  *
@@ -19,10 +20,7 @@ import java.nio.charset.Charset;
  * You should have received a copy of the GNU General Public License 
  * along with Doris.  
  * If not, see <http://www.gnu.org/licenses/>.
- * 
- *  
- * @author Emil Carlsson
- * 
+ *
  */
 public class GlobalStrings {
 	public static Charset UTF8_CHATSET = Charset.forName("UTF-8");

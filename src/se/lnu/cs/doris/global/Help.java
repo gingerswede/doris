@@ -2,6 +2,7 @@ package se.lnu.cs.doris.global;
 
 /**
  * Class to manage console help messages.
+ * @author Emil Carlsson
  * 
  * This file is a part of Doris
  *
@@ -17,10 +18,7 @@ package se.lnu.cs.doris.global;
  * You should have received a copy of the GNU General Public License 
  * along with Doris.  
  * If not, see <http://www.gnu.org/licenses/>.
- * 
- *  
- * @author Emil Carlsson
- * 
+ *
  */
 public class Help {
 	
@@ -87,7 +85,6 @@ public class Help {
 	private static String m_metric =
 			"Metric\n" +
 			"\t-m, --metric <file ending>\n" +
-			"WARNING: This flag will be removed!" +
 			"Start a simple code metrics analysis tool that compare the percent\n" +
 			"of source lines of code, lines of comments and total lines in the\n" +
 			"repository.";
