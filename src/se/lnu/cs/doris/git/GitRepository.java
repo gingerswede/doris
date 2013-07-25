@@ -1,6 +1,10 @@
 package se.lnu.cs.doris.git;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Iterator;
 
 import org.eclipse.jgit.api.Git;
@@ -62,6 +66,9 @@ public class GitRepository {
 
 	//Strings
 	private String m_master = "master";
+	private String m_refs = "refs";
+	private String m_heads = "heads";
+	private String m_head = "head";
 
 	/**
 	 * Constructor taking the uri flag value.
@@ -179,7 +186,6 @@ public class GitRepository {
 	 * @throws Exception 
 	 */
 	public void pullBare() throws Exception {
-		//TODO: Add functionality to pull/select a single branch.
 		String barePath = this.m_target + "/" + this.m_repoName + "_" + this.m_branch + ".git";
 		this.m_localUri = "file://" + this.m_target.replace('\\', '/') + "/" + this.m_repoName + "_" + this.m_branch + ".git";
 		File file = new File(barePath);
@@ -191,10 +197,11 @@ public class GitRepository {
 			Git git = Git.cloneRepository()
 					.setURI(this.m_uri)
 					.setDirectory(new File(this.m_target, this.m_repoName + "_" + this.m_branch + ".git"))
-					.setCloneAllBranches(false)
-					.setBranch(m_branch)
+					.setCloneAllBranches(true)
 					.setBare(true)
 					.call();
+			
+			this.changeBranch(barePath);
 			
 			this.m_headRepository = git.getRepository();
 			
@@ -205,6 +212,66 @@ public class GitRepository {
 	}
 
 	/**
+	 * Manually changes the branch to mine.
+	 * 
+	 * @param barePath Path to bare git repository.
+	 * @throws Exception 
+	 */
+	private void changeBranch(String barePath) throws Exception {
+		//Bare with me on this one. It's ugly but it works.
+		//To do this through JGit would take more effort 
+		//and an entire rebase of Doris compared to this way.
+		File bareRepository = new File(barePath);
+		
+		File head = null;
+		Boolean branchExists = false;
+		
+		//Loops through all files in the .git bare clone.
+		for (File file : bareRepository.listFiles()) {
+			//If the file is a directory with the name "refs" we enter it.
+			if (file.getName().equalsIgnoreCase(this.m_refs) && file.isDirectory()) {
+				for (File ref : file.listFiles()) {
+					//Enter the heads directory to see all current branches.
+					if (ref.getName().equalsIgnoreCase(this.m_heads) && file.isDirectory()) {
+						File[] branches = ref.listFiles();
+						//Search to see if there is a branch in there with the correct name.
+						for (int i = 0; i < branches.length; i++) {
+							if (branches[i].getName().equals(this.m_branch)) {
+								branchExists = true;
+								break;
+							}
+						}
+					}
+				}
+			}
+			//Give access to the head file.
+			if (file.getName().equalsIgnoreCase(this.m_head)) {				
+				head = file;
+			}
+		}
+		
+		//If the branch can't be found in the refs/heads directory throw exception
+		if (!branchExists || !head.getName().equalsIgnoreCase(this.m_head)) {
+			throw new Exception(String.format("Branch %s does not exists.", this.m_branch));
+		} else { //Else manipulate the .git/head file to the wanted branch.
+			FileWriter writer;
+			BufferedReader reader;
+			try {
+				reader = new BufferedReader(new FileReader(head));
+				String lineToChange = reader.readLine();
+				lineToChange = lineToChange.substring(0, lineToChange.lastIndexOf('/') + 1);
+				lineToChange += this.m_branch;
+				writer = new FileWriter(head, false);
+				writer.append(lineToChange);
+				writer.close();
+				reader.close();
+			} catch (IOException e) {
+				throw new Exception(String.format("Error when changing branch.\nError message:\n", e.getMessage()));
+			}
+		}
+	}
+
+	/**
 	 * Method to do start mining a repository.
 	 * @throws Exception 
 	 */
@@ -212,6 +279,7 @@ public class GitRepository {
 		//Fetch the bare .git file to continue working locally only.
 		this.pullBare();
 		RevWalk rw = this.getRevWalk();
+		
 		try {
 			//Order all commits from first to last.
 			AnyObjectId headId = this.m_headRepository.resolve(Constants.HEAD);
@@ -448,8 +516,7 @@ public class GitRepository {
 				g = Git.cloneRepository()
 						.setURI(m_localUri)
 						.setDirectory(mineDir)
-						.setCloneAllBranches(false)
-						.setBranch(m_branch)
+						.setCloneAllBranches(true)
 						.call();
 								
 				g.reset().setRef(this.m_current.getName()).setMode(ResetType.HARD).call();

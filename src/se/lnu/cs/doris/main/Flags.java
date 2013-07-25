@@ -74,7 +74,7 @@ public class Flags {
 	}
 	
 	public static String[] getFlags(String[] args) {
-		ArrayList<String> flags = new ArrayList<>();
+		ArrayList<String> flags = new ArrayList<String>();
 		
 		for (String arg : args) {			
 			if (arg.trim().startsWith("-")) {
