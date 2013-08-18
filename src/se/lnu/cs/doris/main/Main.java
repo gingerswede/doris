@@ -99,18 +99,6 @@ public class Main {
 
 					gr = null;
 
-					System.out.println("Cleaning up mined directories.");
-
-					//This part is to make objects that really are unused be removed.
-					Thread.sleep(2000);
-					System.gc();
-
-					// Clean up the .git dirs for disk storage.
-					// TODO: Must find a way to ensure that streams are closed.
-					// Probably zombie threads/streams in the JVM?
-					GitRepository.cleanupProject(projectPath);
-
-					System.out.println("Clean up done.");
 					/*
 					 * Doris is done with all mining beyond this point.
 					 * Beneth here hooks can be added and external programs
