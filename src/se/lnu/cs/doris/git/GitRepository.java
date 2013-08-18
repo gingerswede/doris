@@ -2,6 +2,7 @@ package se.lnu.cs.doris.git;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -11,12 +12,19 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ResetCommand.ResetType;
 import org.eclipse.jgit.lib.AnyObjectId;
 import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.FileMode;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.ObjectLoader;
+import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
+import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.storage.file.WindowCache;
 import org.eclipse.jgit.storage.file.WindowCacheConfig;
+import org.eclipse.jgit.treewalk.TreeWalk;
+import org.eclipse.jgit.util.FS;
 
 import se.lnu.cs.doris.global.ExceptionHandler;
 import se.lnu.cs.doris.global.GlobalMessages;
@@ -363,36 +371,6 @@ public class GitRepository {
 	}
 
 	/**
-	 * Method to clone a commit to a previous state.
-	 * @param current Commit information of where to revert to.
-	 * @param name Name of the directory.
-	 * @param i Order number of the commit.
-	 * @throws Exception 
-	 */
-	@SuppressWarnings("unused") //Save until multithreading fully implemented.
-	private void cloneCommit(RevCommit current, String name, int i) throws Exception {	    
-		//Clone from local .git file. Increase speed and lower bandwidth need.
-		try {
-			File mineDir = new File(this.m_target, name);
-			Git g = Git.cloneRepository()
-					.setURI(this.m_localUri)
-					.setDirectory(mineDir)
-					.call();
-			
-			g.reset().setRef(current.getName()).setMode(ResetType.HARD).call();
-
-			if (!this.m_noLog) {
-				GitLogger.addNode(this.m_target, this.m_repoName, name, current);
-			}
-			
-			GlobalMessages.commitPulled(i, current.getName());
-			
-		} catch (Exception e) {
-			this.errorHandlingMining(e, current);
-		}
-	}
-
-	/**
 	 * Minimal error handling
 	 * @param e Exception thrown.
 	 * @param current RevCommit in case one was loaded.
@@ -462,25 +440,6 @@ public class GitRepository {
 		return this.m_repoName;
 	}
 	
-	/**
-	 * Method to clean up after a project have been downloaded.
-	 * Due to file locks this need to be performed after the 
-	 * mining is done.
-	 * @param targetPath Path to the repository just mined.
-	 */
-	public static void cleanupProject(String targetPath) {
-		File baseTarget = new File(targetPath);
-		for (File commit : baseTarget.listFiles()) {
-			if (Utilities.tryParseInt(commit.getName())) {
-				String gitDirPath = commit.getAbsolutePath().replace("\\", "/") + "/.git";
-				File gitDir = new File(gitDirPath);
-				if (gitDir.exists()) {
-					Utilities.deleteDirectory(gitDir);
-				}
-			}
-		}
-	}
-	
 	class Cloner implements Runnable {
 
 		private String m_name;
@@ -496,8 +455,8 @@ public class GitRepository {
 			this.m_thread.start();
 		}
 		
-		private void cloneCommit() throws Exception 	{
-			//Clone from local .git file. Increase speed and lower bandwidth need.
+		private void cloneCommit() throws Exception {
+			ObjectReader objectReader = m_headRepository.newObjectReader();
 			try {
 				File mineDir = new File(m_target, this.m_name);
 				
@@ -505,32 +464,42 @@ public class GitRepository {
 					mineDir.mkdir();
 					mineDir.setWritable(true);
 					mineDir.setExecutable(true);
-				}				
+				}
 				
-				Git g = null;
+				TreeWalk treeWalk = new TreeWalk(objectReader);
+				treeWalk.addTree(m_current.getTree());
 				
-				WindowCacheConfig cfg = new WindowCacheConfig();
-				cfg.setPackedGitMMAP(false);
-				WindowCache.reconfigure(cfg);
-				
-				g = Git.cloneRepository()
-						.setURI(m_localUri)
-						.setDirectory(mineDir)
-						.setCloneAllBranches(true)
-						.call();
-								
-				g.reset().setRef(this.m_current.getName()).setMode(ResetType.HARD).call();
+				while (treeWalk.next()) {
+					String path = treeWalk.getPathString();
+					File file = new File(mineDir, path);
+					if (treeWalk.isSubtree()) {
+						file.mkdir();
+						treeWalk.enterSubtree();
+					} else {
+						FileOutputStream outputStream = new FileOutputStream(file);
+						ObjectId objectId = treeWalk.getObjectId(0);
+						ObjectLoader objectLoader = objectReader.open(objectId);
+						try {
+							objectLoader.copyTo(outputStream);
+						} finally {
+							outputStream.close();
+						}
+
+						if (FileMode.EXECUTABLE_FILE.equals(treeWalk.getRawMode(0))) {
+							file.setExecutable(true);
+						}
+					}
+				}
 				
 				GlobalMessages.commitPulled(this.m_i, this.m_current.getName());
-				
-				g.getRepository().close();
-				
-				
 				
 				m_runningThreads--;
 				
 			} catch (Exception e) {
 				errorHandlingMining(e, this.m_current);
+			} finally {
+				// Release resources
+				objectReader.release();
 			}
 		}
 		
