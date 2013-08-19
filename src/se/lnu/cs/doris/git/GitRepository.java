@@ -1,15 +1,10 @@
 package se.lnu.cs.doris.git;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.Iterator;
 
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.ResetCommand.ResetType;
 import org.eclipse.jgit.lib.AnyObjectId;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.FileMode;
@@ -19,12 +14,8 @@ import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevSort;
-import org.eclipse.jgit.revwalk.RevTree;
 import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.storage.file.WindowCache;
-import org.eclipse.jgit.storage.file.WindowCacheConfig;
 import org.eclipse.jgit.treewalk.TreeWalk;
-import org.eclipse.jgit.util.FS;
 
 import se.lnu.cs.doris.global.ExceptionHandler;
 import se.lnu.cs.doris.global.GlobalMessages;
@@ -60,7 +51,6 @@ public class GitRepository {
 	//Class usage
 	private Repository m_headRepository;
 	private String m_repoName;
-	private String m_localUri;
 	private int m_runningThreads = 0;
 
 	//Inputs
@@ -74,9 +64,6 @@ public class GitRepository {
 
 	//Strings
 	private String m_master = "master";
-	private String m_refs = "refs";
-	private String m_heads = "heads";
-	private String m_head = "head";
 
 	/**
 	 * Constructor taking the uri flag value.
@@ -195,7 +182,6 @@ public class GitRepository {
 	 */
 	public void pullBare() throws Exception {
 		String barePath = this.m_target + "/" + this.m_repoName + "_" + this.m_branch + ".git";
-		this.m_localUri = "file://" + this.m_target.replace('\\', '/') + "/" + this.m_repoName + "_" + this.m_branch + ".git";
 		File file = new File(barePath);
 		
 		if (file.exists()) {
@@ -207,9 +193,8 @@ public class GitRepository {
 					.setDirectory(new File(this.m_target, this.m_repoName + "_" + this.m_branch + ".git"))
 					.setCloneAllBranches(true)
 					.setBare(true)
+					.setBranch(m_branch)
 					.call();
-			
-			this.changeBranch(barePath);
 			
 			this.m_headRepository = git.getRepository();
 			
@@ -217,66 +202,6 @@ public class GitRepository {
 			this.errorHandlingMining(e, null);
 		}
 
-	}
-
-	/**
-	 * Manually changes the branch to mine.
-	 * 
-	 * @param barePath Path to bare git repository.
-	 * @throws Exception 
-	 */
-	private void changeBranch(String barePath) throws Exception {
-		//Bare with me on this one. It's ugly but it works.
-		//To do this through JGit would take more effort 
-		//and an entire rebase of Doris compared to this way.
-		File bareRepository = new File(barePath);
-		
-		File head = null;
-		Boolean branchExists = false;
-		
-		//Loops through all files in the .git bare clone.
-		for (File file : bareRepository.listFiles()) {
-			//If the file is a directory with the name "refs" we enter it.
-			if (file.getName().equalsIgnoreCase(this.m_refs) && file.isDirectory()) {
-				for (File ref : file.listFiles()) {
-					//Enter the heads directory to see all current branches.
-					if (ref.getName().equalsIgnoreCase(this.m_heads) && file.isDirectory()) {
-						File[] branches = ref.listFiles();
-						//Search to see if there is a branch in there with the correct name.
-						for (int i = 0; i < branches.length; i++) {
-							if (branches[i].getName().equals(this.m_branch)) {
-								branchExists = true;
-								break;
-							}
-						}
-					}
-				}
-			}
-			//Give access to the head file.
-			if (file.getName().equalsIgnoreCase(this.m_head)) {				
-				head = file;
-			}
-		}
-		
-		//If the branch can't be found in the refs/heads directory throw exception
-		if (!branchExists || !head.getName().equalsIgnoreCase(this.m_head)) {
-			throw new Exception(String.format("Branch %s does not exists.", this.m_branch));
-		} else { //Else manipulate the .git/head file to the wanted branch.
-			FileWriter writer;
-			BufferedReader reader;
-			try {
-				reader = new BufferedReader(new FileReader(head));
-				String lineToChange = reader.readLine();
-				lineToChange = lineToChange.substring(0, lineToChange.lastIndexOf('/') + 1);
-				lineToChange += this.m_branch;
-				writer = new FileWriter(head, false);
-				writer.append(lineToChange);
-				writer.close();
-				reader.close();
-			} catch (IOException e) {
-				throw new Exception(String.format("Error when changing branch.\nError message:\n", e.getMessage()));
-			}
-		}
 	}
 
 	/**
@@ -362,10 +287,6 @@ public class GitRepository {
 		}
 		
 		if (this.m_headRepository != null) {
-			WindowCacheConfig cfg = new WindowCacheConfig();
-			cfg.setPackedGitMMAP(false);
-			WindowCache.reconfigure(cfg);
-			
 			this.m_headRepository.close();
 		}
 	}
