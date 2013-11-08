@@ -28,6 +28,8 @@ Doris was created by Emil Carlsson as part of a bachelor thesis about problems e
 
 [Back to top](#table-of-contents)
 ###Recent changes
+* Update to JGit 3.0 (by https://github.com/robinst)
+* Optimization to mining process (by https://github.com/robinst)
 * Fixed bug with not working tags.
 * Added parameter object.
 
