@@ -376,51 +376,49 @@ public class GitRepository {
 			this.m_thread.start();
 		}
 		
-		private void cloneCommit() throws Exception {
-			ObjectReader objectReader = m_headRepository.newObjectReader();
-			try {
-				File mineDir = new File(m_target, this.m_name);
-				
-				if (!mineDir.exists()) {
-					mineDir.mkdir();
-					mineDir.setWritable(true);
-					mineDir.setExecutable(true);
-				}
-				
-				TreeWalk treeWalk = new TreeWalk(objectReader);
-				treeWalk.addTree(m_current.getTree());
-				
-				while (treeWalk.next()) {
-					String path = treeWalk.getPathString();
-					File file = new File(mineDir, path);
-					if (treeWalk.isSubtree()) {
-						file.mkdir();
-						treeWalk.enterSubtree();
-					} else {
-						FileOutputStream outputStream = new FileOutputStream(file);
-						ObjectId objectId = treeWalk.getObjectId(0);
-						ObjectLoader objectLoader = objectReader.open(objectId);
-						try {
-							objectLoader.copyTo(outputStream);
-						} finally {
-							outputStream.close();
-						}
+		private void cloneCommit() throws Exception{
+			try(ObjectReader objectReader = m_headRepository.newObjectReader()){
+				try{
+					File mineDir = new File(m_target, this.m_name);
 
-						if (FileMode.EXECUTABLE_FILE.equals(treeWalk.getRawMode(0))) {
-							file.setExecutable(true);
+					if(!mineDir.exists()){
+						mineDir.mkdir();
+						mineDir.setWritable(true);
+						mineDir.setExecutable(true);
+					}
+
+					TreeWalk treeWalk = new TreeWalk(objectReader);
+					treeWalk.addTree(m_current.getTree());
+
+					while(treeWalk.next()){
+						String path = treeWalk.getPathString();
+						File file = new File(mineDir, path);
+						if(treeWalk.isSubtree()){
+							file.mkdir();
+							treeWalk.enterSubtree();
+						}else{
+							FileOutputStream outputStream = new FileOutputStream(file);
+							ObjectId objectId = treeWalk.getObjectId(0);
+							ObjectLoader objectLoader = objectReader.open(objectId);
+							try{
+								objectLoader.copyTo(outputStream);
+							}finally{
+								outputStream.close();
+							}
+
+							if(FileMode.EXECUTABLE_FILE.equals(treeWalk.getRawMode(0))){
+								file.setExecutable(true);
+							}
 						}
 					}
+
+					GlobalMessages.commitPulled(this.m_i, this.m_current.getName());
+
+					m_runningThreads--;
+
+				}catch(Exception e){
+					errorHandlingMining(e, this.m_current);
 				}
-				
-				GlobalMessages.commitPulled(this.m_i, this.m_current.getName());
-				
-				m_runningThreads--;
-				
-			} catch (Exception e) {
-				errorHandlingMining(e, this.m_current);
-			} finally {
-				// Release resources
-				objectReader.release();
 			}
 		}
 		
