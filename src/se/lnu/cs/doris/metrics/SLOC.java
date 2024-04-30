@@ -5,7 +5,7 @@ import java.io.File;
 import java.io.FileReader;
 
 import org.jfree.chart.ChartFactory;
-import org.jfree.chart.ChartUtilities;
+import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.axis.NumberTickUnit;
@@ -140,10 +140,10 @@ public class SLOC {
 		
 		switch (type) {
 		case JPEG:
-			ChartUtilities.saveChartAsJPEG(new File(this.m_mainDir.getAbsolutePath(), "sloc_chart.jpg"), chart, 1000, 720);
+			ChartUtils.saveChartAsJPEG(new File(this.m_mainDir.getAbsolutePath(), "sloc_chart.jpg"), chart, 1000, 720);
 			break;
 		case PNG:
-			ChartUtilities.saveChartAsPNG(new File(this.m_mainDir.getAbsolutePath(), "sloc_chart.png"), chart, 1000, 720);
+			ChartUtils.saveChartAsPNG(new File(this.m_mainDir.getAbsolutePath(), "sloc_chart.png"), chart, 1000, 720);
 			break;
 		default:
 			break;
